@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>#paid Creator Portfolio</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: #F2F0EB;
+      color: #12131B;
+      line-height: 1.6;
+    }
+
+    header {
+      background-color: #FFFFFF;
+      border-bottom: 1px solid #E5E1D9;
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: bold;
+      color: #12131B;
+    }
+
+    .tagline {
+      font-size: 0.875rem;
+      color: #8383FF;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .loading {
+      font-size: 0.875rem;
+      color: #999;
+    }
+
+    nav {
+      background-color: #FFFFFF;
+      padding: 0 2rem;
+      border-bottom: 1px solid #E5E1D9;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      position: sticky;
+      top: 4.5rem;
+      z-index: 99;
+    }
+
+    .vertical-btn {
+      padding: 1rem 1.5rem;
+      background-color: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #12131B;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .vertical-btn.active {
+      color: #4E4EFF;
+      border-bottom-color: #4E4EFF;
+    }
+
+    .vertical-btn:hover {
+      color: #4E4EFF;
+    }
+
+    main {
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+    }
+
+    .gallery-item {
+      background-color: #FFFFFF;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .gallery-item-content {
+      padding: 1rem;
+      max-height: 600px;
+      overflow: hidden;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      background-color: #FFFFFF;
+      border-radius: 0.5rem;
+      color: #999;
+    }
+
+    .empty-state p {
+      font-size: 1rem;
+    }
+
+    .instagram-media {
+      max-width: 100% !important;
+    }
+
+    .tiktok-embed {
+      max-width: 100% !important;
+      min-height: 400px;
+    }
+
+    .error {
+      background-color: #FFF5F5;
+      border: 1px solid #FFD6D6;
+      color: #C53030;
+      padding: 1.5rem 2rem;
+      border-radius: 0.5rem;
+      margin: 2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="logo">#paid</div>
+      <span class="tagline">Creator Portfolio</span>
+    </div>
+    <div class="loading" id="status"></div>
+  </header>
+
+  <nav id="verticalNav"></nav>
+  <main id="mainContent"></main>
+
+  <script async src="https://www.instagram.com/embed.js"></script>
+  <script async src="https://www.tiktok.com/embed.v1.js"></script>
+
+  <script>
+    const VERTICALS = ['Spirits', 'Wine', 'Non-Alc', 'Petcare', 'Recipe', 'Snacks', 'Beverage', 'Beer&RTD'];
+    let currentVertical = new URLSearchParams(window.location.search).get('vertical') || 'Spirits';
+    let posts = {};
+    const statusEl = document.getElementById('status');
+
+    // Get Google Sheet ID from URL or use default
+    const SHEET_ID = new URLSearchParams(window.location.search).get('sheet') || 'YOUR_SHEET_ID_HERE';
+    const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
+
+    // Fetch and parse CSV
+    async function loadData() {
+      try {
+        statusEl.textContent = 'Loading...';
+
+        // Initialize posts
+        VERTICALS.forEach(v => (posts[v] = []));
+
+        const response = await fetch(CSV_URL);
+        if (!response.ok) throw new Error('Could not load sheet');
+
+        const csv = await response.text();
+        const lines = csv.split('\n');
+
+        // Parse CSV (skip header)
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          // Simple CSV parser (handles quoted strings)
+          const parts = [];
+          let current = '';
+          let inQuotes = false;
+
+          for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              parts.push(current.trim().replace(/^"|"$/g, ''));
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          parts.push(current.trim().replace(/^"|"$/g, ''));
+
+          const [vertical, url] = parts;
+          if (vertical && url) {
+            const type = url.includes('instagram') ? 'instagram' : 'tiktok';
+            if (!posts[vertical]) posts[vertical] = [];
+            posts[vertical].push({
+              id: Date.now() + Math.random(),
+              url,
+              type
+            });
+          }
+        }
+
+        statusEl.textContent = '';
+        renderNav();
+        renderMain();
+      } catch (error) {
+        statusEl.textContent = '⚠️ Error loading';
+        document.getElementById('mainContent').innerHTML = `
+          <div class="error">
+            <p><strong>Could not load portfolio</strong></p>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Make sure your Google Sheet is public and the sheet ID is correct.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Render navigation
+    function renderNav() {
+      const nav = document.getElementById('verticalNav');
+      nav.innerHTML = '';
+      VERTICALS.forEach(vertical => {
+        const btn = document.createElement('button');
+        btn.className = `vertical-btn ${vertical === currentVertical ? 'active' : ''}`;
+        btn.textContent = vertical;
+        btn.onclick = () => {
+          currentVertical = vertical;
+          window.history.replaceState({}, '', `?vertical=${vertical}&sheet=${SHEET_ID}`);
+          renderNav();
+          renderMain();
+        };
+        nav.appendChild(btn);
+      });
+    }
+
+    // Render main content
+    function renderMain() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = '';
+
+      const postList = posts[currentVertical] || [];
+
+      if (postList.length > 0) {
+        const gallery = document.createElement('div');
+        gallery.className = 'gallery';
+
+        postList.forEach(post => {
+          const item = document.createElement('div');
+          item.className = 'gallery-item';
+
+          let embedHTML = '';
+          if (post.type === 'instagram') {
+            embedHTML = `<blockquote class="instagram-media" data-instgrm-permalink="${post.url}" data-instgrm-version="14"></blockquote>`;
+          } else {
+            embedHTML = `<blockquote class="tiktok-embed" cite="${post.url}"><section><a href="${post.url}" target="_blank" rel="noopener noreferrer" style="color: #4E4EFF;">View on TikTok</a></section></blockquote>`;
+          }
+
+          item.innerHTML = `<div class="gallery-item-content">${embedHTML}</div>`;
+          gallery.appendChild(item);
+        });
+
+        main.appendChild(gallery);
+
+        // Reload embeds
+        setTimeout(() => {
+          if (window.instgrm) window.instgrm.Embeds.process();
+          if (window.tiktok) window.tiktok.embed.lib.render(document.body);
+        }, 100);
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.innerHTML = `<p>No content yet for ${currentVertical}</p>`;
+        main.appendChild(empty);
+      }
+    }
+
+    // Load on page load
+    loadData();
+
+    // Refresh every 30 seconds to pick up new content
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>
